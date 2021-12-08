@@ -1,0 +1,1 @@
+SPI controller supporting 8 bit transactions with test becnh proving normal transactions
