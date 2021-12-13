@@ -42,9 +42,10 @@ end component;
            Type test_case is (reset,t0,t1,t2,t3,t4,t5,t6);
            signal s_test_case : test_case;
            signal s_freq_div : integer := 0; 
-           signal test_count           :   integer; 
+           signal test_count           :   integer := 0; 
+           signal stop           :   std_logic ;  
            
-           signal s_rst_n           :   std_logic := '0';                          
+           signal s_rst_n           :   std_logic ;                          
            signal s_clk_apb         :   std_logic := '0';                    
            signal s_apb_pwrite      :   std_logic;                    
            signal s_apb_psel        :   std_logic;                    
@@ -54,7 +55,8 @@ end component;
            signal s_apb_prdata      :   std_logic_vector(15 downto 0);
            signal s_apb_strb        :   std_logic_vector(1  downto 0);
            signal s_interrupt       :   std_logic;                    
-                                                                    
+           signal write_reg         :   std_logic;
+           signal read_reg          :   std_logic;                                                         
            signal s_miso            :   std_logic;                    
            signal s_mosi            :   std_logic;                    
            signal s_sclk            :   std_logic;                    
@@ -64,115 +66,7 @@ begin
 
     s_clk_apb <= not(s_clk_apb) after 50 ns;
     
-    --Process for applying reset
-    reset_proc: PROCESS
-    BEGIN        
-    		  s_rst_n <= '0';
-    		  wait for 500 ns; 
-    		  s_rst_n <= '1';
-    END PROCESS;
-       	
-    PROCESS 
-    BEGIN
-              IF s_rst_n = '0' THEN
-                 s_mode <= halt;
-              ELSIF (s_clk_apb'EVENT AND s_clk_apb = '1') THEN
-                 CASE s_mode IS
 
-                    WHEN read =>    s_apb_psel      <= '1';
-                                    s_apb_pwrite    <= '0';
-                                    s_apb_penable   <= '1';                                         
-                                    wait for 100 ns;
-                                    s_apb_psel      <= '0';
-                                    s_apb_penable   <= '0';
-                       
-                    WHEN write=>    s_apb_psel      <= '1';
-                                    s_apb_pwrite    <= '1';
-                                    s_apb_penable   <= '1';                                         
-                                    wait for 100 ns;
-                                    s_apb_psel      <= '0';
-                                    s_apb_pwrite    <= '0';
-                                    s_apb_penable   <= '0';
-                       
-                    WHEN halt =>    s_rst_n         <= '0';
-                                    s_clk_apb       <= '0';
-                                    s_apb_pwrite    <= '0';
-                                    s_apb_psel      <= '0';
-                                    s_apb_penable   <= '0';
-                                    s_apb_paddr     <= x"00";
-                                    s_apb_pwdata    <= x"0000";
-                                    s_apb_prdata    <= x"0000";
-                                    s_apb_strb      <= "00";
-                                    s_interrupt     <= '0';                                                   
-                                    s_miso          <= '0';
-                                    s_mosi          <= '0';
-                                    s_sclk          <= '0';
-                                    s_cs_n          <= x"0";                           
-                 END CASE;
-                 CASE s_test_case IS
-                    when reset  =>  s_mode  <= halt;
-                                    if(test_count =0) then
-                                        s_test_case <= t0;
-                                    else if(test_count = 1)  then   
-                                        s_test_case <= t1;
-                                    end if;
-                                    end if;              
-                    ---Test case for transferring 8 bit data
-                    when t0     =>  s_mode          <= write;
-                                    s_apb_paddr     <= x"04";       --address of control reg
-                                    s_apb_pwdata    <= x"000F";     --data for control reg
-                                    s_miso          <= '1'; 
-                                    wait for 200 ns;  
-                                    s_apb_paddr     <= x"08";       --address of transmit data reg
-                                    s_apb_pwdata    <= x"12BA";     --data for transmit data reg  
-                                    if(s_interrupt = '1') then
-                                        test_count      <= test_count  +   1;
-                                        s_mode          <= read;
-                                        s_apb_paddr     <= x"00";   --address of status reg
-                                        wait for 100 ns;
-                                        s_test_case     <= reset;
-                                    end if;
-                                    
-                    when others  =>  s_test_case     <= reset;               
-                 END CASE;
-                 
-              END IF;
-    END PROCESS;
-    
---    test_process : PROCESS
---    BEGIN
---              IF s_rst_n = '0' THEN
---                 s_test_case <= reset;
---              ELSIF (s_clk_apb'EVENT AND s_clk_apb = '1') THEN
---                 CASE s_test_case IS
---                    when reset  =>  s_mode  <= halt;
---                                    if(test_count =0) then
---                                        s_test_case <= t0;
---                                    else if(test_count = 1)  then   
---                                        s_test_case <= t1;
---                                    end if;
---                                    end if;              
---                    ---Test case for transferring 8 bit data
---                    when t0     =>  s_mode          <= write;
---                                    s_apb_paddr     <= x"04";   --address of control reg
---                                    s_apb_pwdata    <= x"000F";   --data for control reg
---                                    s_miso          <= '1'; 
---                                    wait for 200 ns;  
---                                    s_apb_paddr     <= x"08";   --address of transmit data reg
---                                    s_apb_pwdata    <= x"12BA";   --data for transmit data reg  
---                                    if(s_interrupt = '1') then
---                                        test_count      <= test_count  +   1;
---                                        s_mode          <= read;
---                                        s_apb_paddr     <= x"00";   --address of status reg
---                                        wait for 100 ns;
---                                        s_test_case     <= reset;
---                                    end if;
-                                    
---                   when others  =>  s_test_case     <= reset;               
---                 END CASE;
---              END IF; 
---    END PROCESS;       
-       
     u0_spi_master : spi_master
     generic map(   
         freq_div    =>  8       
@@ -196,6 +90,87 @@ begin
         cs_n        =>  s_cs_n              
         
         );
-          
+        
+        reset_process: process
+        begin
+                s_rst_n <= '0';
+                wait for 500 ns; 
+                s_rst_n <= '1';
+                wait;
+        end process;
+                            
+        PROCESS(s_rst_n,s_clk_apb) 
+        BEGIN             
+                      
+                  IF s_rst_n = '0' THEN
+                     s_mode <= halt;
+                  ELSE IF (s_clk_apb'EVENT AND s_clk_apb = '1' AND s_rst_n = '1') THEN
+                     --s_test_case    <= t0;   
+                     CASE s_test_case IS
+                        when reset  =>  s_mode  <= halt;
+                                        if(test_count =0) then
+                                            s_test_case <= t0;
+                                            s_mode  <= write;
+                                        else if(test_count = 1)  then   
+                                            s_test_case <= t1;
+                                        end if;
+                                        end if;              
+                        ---Test case for transferring 8 bit data
+                        when t0     =>  if (test_count =0 and stop /= '1' ) then 
+                                            s_mode          <= write;
+                                            s_apb_paddr     <= x"04";       --address of control reg
+                                            s_apb_pwdata    <= x"00FF";     --data for control reg
+                                            s_miso          <= '1'; 
+                                            write_reg       <= '1';
+                                        end if;
+                                        if (write_reg ='1' and stop /= '1') then  
+                                            s_mode          <= halt;
+                                            s_apb_paddr     <= x"08";       --address of transmit data reg
+                                            s_apb_pwdata    <= x"12BA";     --data for transmit data reg  
+                                            s_apb_strb      <= "01";
+                                            write_reg       <= '0';
+                                            stop            <= '1';
+                                        end if;
+                                        if(s_interrupt = '1') then
+                                            test_count      <= test_count  +   1;
+                                            s_mode          <= read;
+                                            s_apb_paddr     <= x"00";   --address of status reg                                           
+                                            s_test_case     <= reset;
+                                        end if;
+                                        
+                        when others  =>  s_test_case     <= reset;               
+                     END CASE;
+                     CASE s_mode IS
+    
+                        WHEN read =>    s_apb_psel      <= '1';
+                                        s_apb_pwrite    <= '0';
+                                        s_apb_penable   <= '1';                                         
+                                        s_mode          <= halt;
+                           
+                        WHEN write=>    s_apb_psel      <= '1';
+                                        s_apb_pwrite    <= '1';
+                                        s_apb_penable   <= '1';                                         
+                                        --s_mode          <= halt;
+                           
+                        WHEN halt =>    --s_rst_n         <= '0';
+                                        --s_clk_apb       <= '0';
+                                        s_apb_pwrite    <= '0';
+                                        s_apb_psel      <= '0';
+                                        s_apb_penable   <= '0';
+                                        s_apb_paddr     <= x"00";
+                                        s_apb_pwdata    <= x"0000";
+                                        s_apb_prdata    <= x"0000";
+                                        --s_apb_strb      <= "00";
+                                        s_interrupt     <= '0';                                                   
+                                        --s_miso          <= '0';
+                                        --s_mosi          <= '0';
+                                        --s_sclk          <= '0';
+                                        --s_cs_n          <= x"0";                           
+                     END CASE;
 
+                  END IF;   
+                  END IF;
+        END PROCESS;
+     
+          
 end spi_master_TB_arch;
