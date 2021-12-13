@@ -151,6 +151,7 @@ begin
                           clock_reg <= '0';
                           tx_done <= '0';
                           discard_en <= '0';
+                          transmit_data <= '0';
                       end if;                                                                                                     
                   end if; 
             end if;  
@@ -160,7 +161,7 @@ begin
      transreceive_process :process (generated_clk)
      begin
              ------------------------------------------------For MSB transfer first---------------------------------------------------
-             if (lsb_msb = '1' and rising_edge(generated_clk) and tx_rx = '1' and  discard_en <= '1') then                             
+             if (lsb_msb = '1' and rising_edge(generated_clk) and tx_rx = '1' and  discard_en = '1') then                             
                      if (apb_strb = x"1" and count_8_tx > 0) then                                                                                            
                          mosi <= txdata_reg(count_8_tx-1);
                          discard_reg <= miso;
@@ -180,7 +181,7 @@ begin
                         count_16_tx <= count_16_tx -1;
                     end if;
              ------------------------------------------------For LSB transfer first---------------------------------------------------
-             else if (lsb_msb = '0' and rising_edge(generated_clk) and tx_rx = '1' and  discard_en <= '1' )then  
+             else if (lsb_msb = '0' and rising_edge(generated_clk) and tx_rx = '1' and  discard_en = '1' )then  
                     if (apb_strb = x"1" and count_8_tx > 0) then                                                                                            
                         mosi <= txdata_reg(8-count_8_tx);
                         discard_reg <= miso;
@@ -201,7 +202,7 @@ begin
                     end if;                                 
              else if (count_8_tx = 0 or count_16_tx = 8) then       
                     --clock_reg     <= '0';
-                    transmit_data <= '0';
+--                    transmit_data <= '0';
                     --tx_done       <= '0'; 
                     count_8_tx    <=  8 ;
                     count_8_tx    <= 16 ;
