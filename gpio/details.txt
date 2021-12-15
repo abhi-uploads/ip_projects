@@ -1,0 +1,1 @@
+HDL for GPIO with 17 bit address containing direction control MSB, and 16 bit data compatible with apb
